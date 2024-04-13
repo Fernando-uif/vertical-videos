@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:toktik/presentation/widgets/video/video_background.dart';
+import 'package:video_player/video_player.dart';
 
-class FullScreenPlayer extends StatelessWidget {
+class FullScreenPlayer extends StatefulWidget {
   final String videoUrl;
   final String caption;
 
@@ -8,7 +10,85 @@ class FullScreenPlayer extends StatelessWidget {
       {super.key, required this.caption, required this.videoUrl});
 
   @override
+  State<FullScreenPlayer> createState() => _FullScreenPlayerState();
+}
+
+class _FullScreenPlayerState extends State<FullScreenPlayer> {
+  late VideoPlayerController controller;
+  // bool isPlaying
+
+  // Estado inicial del video player
+  @override
+  void initState() {
+    super.initState();
+    controller = VideoPlayerController.asset(widget.videoUrl)
+      ..setVolume(0)
+      ..setLooping(true)
+      ..play();
+  }
+
+  // Esto se hace para que el video no se siga reproduciendo y evitar fuga de memoria
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const Placeholder();
+    // Construye el video player
+    return FutureBuilder(
+      future: controller.initialize(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          // Si aun no esta conectado no pondra el video, si no que pondra el loading
+          return const Center(
+              child: CircularProgressIndicator(
+            strokeWidth: 2,
+          ));
+        }
+        // Ya nos dice que aspecto tiene
+        return GestureDetector(
+            onTap: () {
+              if (controller.value.isPlaying) {
+                controller.pause();
+                return;
+              }
+              controller.play();
+            },
+            child: AspectRatio(
+              aspectRatio: controller.value.aspectRatio,
+              child: Stack(
+                children: [
+                  VideoPlayer(controller),
+                  // Gradiente
+                   VideoBackground(
+                    stops:const [0.8, 1.0],
+                  ),
+                  //texto
+                  Positioned(
+                      bottom: 50,
+                      left: 20,
+                      child: _VideoCaption(caption: widget.caption))
+                ],
+              ),
+            ));
+      },
+    );
+  }
+}
+
+class _VideoCaption extends StatelessWidget {
+  final String caption;
+  const _VideoCaption({super.key, required this.caption});
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final titleStyle = Theme.of(context).textTheme.titleLarge;
+    return SizedBox(
+      width: size.width * 0.6,
+      child: Text(caption, maxLines: 2, style: titleStyle),
+    );
   }
 }
